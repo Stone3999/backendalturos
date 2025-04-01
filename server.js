@@ -15,7 +15,7 @@ app.use((req, res, next) => {
 
 // CORS configuration
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: ["http://localhost:3000", "https://alturos-seven.vercel.app"],
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true // Enable credentials for cart session management

@@ -41,6 +41,42 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Ruta para actualizar los detalles del producto
+router.put("/producto/:id", async (req, res) => {
+  const { id } = req.params;  // Obtenemos el ID del producto
+  const { prod_nom, prod_desc, prod_precio, prod_stock } = req.body;  // Obtenemos los detalles desde el cuerpo de la solicitud
+
+  // Verificar si los valores proporcionados son válidos
+  if (
+    !prod_nom ||
+    !prod_desc ||
+    !prod_precio ||
+    isNaN(prod_precio) ||
+    isNaN(prod_stock)
+  ) {
+    return res.status(400).json({ error: "Datos inválidos para la actualización" });
+  }
+
+  try {
+    const query = `
+      UPDATE producto
+      SET prod_nom = ?, prod_desc = ?, prod_precio = ?, prod_stock = ? 
+      WHERE prod_id = ?
+    `;
+    const [result] = await db.promise().query(query, [prod_nom, prod_desc, prod_precio, prod_stock, id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Producto no encontrado para actualizar" });
+    }
+
+    res.status(200).json({ message: "Producto actualizado correctamente" });
+  } catch (error) {
+    console.error("Error al actualizar el producto:", error.message);
+    res.status(500).json({ error: "Error al actualizar el producto" });
+  }
+});
+
+
 // Ruta para obtener un producto específico por su ID
 router.get("/:id", async (req, res) => {
   const { id } = req.params;

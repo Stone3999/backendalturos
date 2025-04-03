@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../database");  // Asegúrate de que el archivo de base de datos esté bien configurado
 
+
 // Ruta para agregar un producto al carrito
 router.post("/carrito", async (req, res) => {
   const { us_id, prod_id, car_cantidad } = req.body;  // Usamos el id del usuario, id del producto y cantidad
@@ -32,7 +33,7 @@ router.post("/carrito", async (req, res) => {
   }
 });
 
-// Ruta para obtener los productos en el carrito de un usuario
+
 // Ruta para obtener los productos en el carrito de un usuario
 router.get("/:us_id", async (req, res) => {
   const { us_id } = req.params;
@@ -56,6 +57,35 @@ router.get("/:us_id", async (req, res) => {
     res.status(500).json({ error: "Error al obtener los productos del carrito" });
   }
 });
+
+
+
+// Cambiar GET a POST
+router.post("/saldo", async (req, res) => {
+  const { us_id } = req.body; // Acceder al cuerpo de la solicitud para obtener el us_id
+
+  try {
+    const query = `
+      SELECT saldo
+      FROM usuario
+      WHERE id_us = ?
+    `;
+    const [result] = await db.promise().query(query, [us_id]);
+
+    if (result.length === 0) {
+      return res.status(404).json({ message: "Usuario no encontrado." });
+    }
+
+    const saldo = result[0].saldo; // Asumiendo que el saldo es un campo decimal en la base de datos
+
+    res.json({ message: "Saldo obtenido", saldo: saldo });
+  } catch (error) {
+    console.error("Error obteniendo saldo:", error.message);
+    res.status(500).json({ error: "Error al obtener el saldo" });
+  }
+});
+
+
 
 
   // Ruta para agregar un producto al carrito
@@ -120,53 +150,45 @@ router.get("/:us_id", async (req, res) => {
     }
   });
   
-  // Ruta para proceder al pago
   router.post("/pagar", async (req, res) => {
     const { us_id } = req.body;
-    console.log("📦 Procesando pago para usuario:", us_id);
   
     try {
-      // 🔍 Verificar si hay productos en el carrito
-      const [productos] = await db.promise().query("SELECT * FROM carrito WHERE us_id = ?", [us_id]);
-  
-      if (productos.length === 0) {
-        return res.status(400).json({ error: "No tienes productos en el carrito" });
-      }
-  
-      // 🧾 Insertar en ventas con total
-      const insertVentasQuery = `
-        INSERT INTO ventas (us_id, prod_id, vent_fecha, vent_total)
-        SELECT c.us_id, c.prod_id, NOW(), (c.car_cantidad * p.prod_precio)
+      // Obtener primer producto (puedes adaptar esto a obtener el total si quieres solo un precio aproximado)
+      const [carrito] = await db.promise().query(`
+        SELECT c.prod_id, p.prod_precio
         FROM carrito c
         JOIN producto p ON c.prod_id = p.prod_id
         WHERE c.us_id = ?
-      `;
+        LIMIT 1
+      `, [us_id]);
   
-      try {
-        const [insertResult] = await db.promise().query(insertVentasQuery, [us_id]);
-        console.log("✅ Insert en ventas completado:", insertResult);
-      } catch (insertErr) {
-        console.error("❌ ERROR en insert de ventas:", insertErr.message);
-        return res.status(500).json({ error: "Error al registrar ventas" });
+      if (carrito.length === 0) {
+        return res.status(400).json({ error: "⚠ No hay productos en el carrito" });
       }
   
-      // 📉 Disminuir el stock
-      const reducirStockQuery = `
-        UPDATE producto p
-        JOIN carrito c ON p.prod_id = c.prod_id
-        SET p.prod_stock = GREATEST(p.prod_stock - c.car_cantidad, 0)
-        WHERE c.us_id = ?
-      `;
-      await db.promise().query(reducirStockQuery, [us_id]);
+      const { prod_id, prod_precio } = carrito[0];
   
-      // 🧼 Vaciar carrito
-      await db.promise().query("DELETE FROM carrito WHERE us_id = ?", [us_id]);
+      const [result] = await db.promise().query("CALL comprar_producto(?, ?, ?)", [
+        us_id,
+        prod_id,
+        prod_precio
+      ]);
   
-      res.status(200).json({ message: "✅ Compra procesada, stock actualizado y carrito vaciado" });
+      const mensaje = result[0][0]?.resultado || "⚠ Sin respuesta del procedimiento";
+  
+      if (mensaje.includes("éxito")) {
+        await db.promise().query("DELETE FROM carrito WHERE us_id = ?", [us_id]);
+        return res.status(200).json({ message: mensaje });
+      } else {
+        return res.status(400).json({ error: mensaje });
+      }
+  
     } catch (error) {
-      console.error("❌ Error general al procesar el pago:", error.message);
-      res.status(500).json({ error: "Error al procesar el pago" });
+      console.error("❌ Error al llamar al procedure:", error.message);
+      return res.status(500).json({ error: "Error al procesar la compra desde el servidor" });
     }
   });
-
-  module.exports = router;
+  
+  
+  module.exports = router;

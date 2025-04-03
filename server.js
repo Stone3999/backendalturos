@@ -4,7 +4,6 @@ const loginRoutes = require("./routes/loginRoutes");
 const productosRoutes = require("./routes/productosRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const carroRoutes = require("./routes/carroRoutes");
-
 const app = express();
 
 // Debug logging middleware

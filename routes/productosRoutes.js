@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const db = require("../database");  // Asegúrate de que el archivo de base de datos esté bien configurado
 
-
 // Ruta para obtener todos los productos
 router.get("/", async (req, res) => {
   try {
@@ -15,30 +14,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Ruta para actualizar un producto
-router.put("/producto/:id", async (req, res) => {
-  const { id } = req.params;
-  const { prod_desc, prod_precio, prod_stock } = req.body;
-
-  try {
-    const query = `CALL actualizar_producto_admin(?, ?, ?, ?)`;
-    const [result] = await db.promise().query(query, [
-      id,
-      prod_desc,
-      prod_precio,
-      prod_stock,
-    ]);
-
-    if (result.affectedRows > 0) {
-      res.json({ message: "Producto actualizado correctamente" });
-    } else {
-      res.status(404).json({ error: "Producto no encontrado o no actualizado" });
-    }
-  } catch (error) {
-    console.error("Error al actualizar producto:", error.message);
-    res.status(500).json({ error: "Error al actualizar el producto" });
-  }
-});
 
 
 // Ruta para obtener todos los productos
@@ -54,7 +29,7 @@ router.get("/", async (req, res) => {
 });
 
 
-// Ruta para obtener todos los productos desde la vista `vista_productos`
+// Ruta para obtener todos los productos desde la vista vista_productos
 router.get("/", async (req, res) => {
   try {
     const query = "SELECT * FROM vista_productos";  // Usamos la vista para obtener los productos
@@ -106,4 +81,4 @@ router.post("/carrito", async (req, res) => {
 
 
 
-module.exports = router;
+module.exports = router;

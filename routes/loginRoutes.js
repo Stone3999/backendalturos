@@ -102,11 +102,20 @@ router.post("/login", async (req, res) => {
     }
 
     const user = results[0];
+
+    // Verificar si ya hay una sesión activa
+    if (user.us_logged === 1) {
+      return res.status(400).json({ error: "❌ Ya hay una sesión activa para este usuario" });
+    }
+
     const isMatch = await bcrypt.compare(us_pass, user.us_pass);
 
     if (!isMatch) {
       return res.status(400).json({ error: "❌ Contraseña incorrecta" });
     }
+
+    // Iniciar sesión: Cambiar us_logged a 1
+    await db.promise().query("UPDATE usuario SET us_logged = 1 WHERE id_us = ?", [user.id_us]);
 
     const token = jwt.sign(
       { id: user.id_us, email: user.us_mail, tipo: user.us_tipo },
@@ -130,6 +139,26 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "❌ Error interno del servidor" });
   }
 });
+
+
+router.post("/logout", async (req, res) => {
+  const { userId } = req.body; // El ID del usuario se debe obtener del JWT o del cuerpo de la solicitud
+
+  if (!userId) {
+    return res.status(400).json({ error: "❌ ID de usuario requerido" });
+  }
+
+  try {
+    // Actualizar el valor de us_logged a 0 cuando el usuario cierre sesión
+    await db.promise().query("UPDATE usuario SET us_logged = 0 WHERE id_us = ?", [userId]);
+
+    res.json({ message: "✅ Cierre de sesión exitoso" });
+  } catch (error) {
+    console.error("Error en logout:", error);
+    res.status(500).json({ error: "❌ Error interno del servidor" });
+  }
+});
+
 
 
 module.exports = router;
